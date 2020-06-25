@@ -1,0 +1,13 @@
+[package]
+name = "modular"
+version = "0.1.0"
+authors = ["Michael Färber <michael.faerber@gedenkt.at>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "modular"
+path = "src/lib.rs"
+
+[dependencies]
