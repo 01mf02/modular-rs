@@ -179,6 +179,11 @@ impl<K, V> Context<K, V> {
             Some((_name, module)) => module,
         }
     }
+
+    /// Return the path of the currently open module.
+    pub fn get_path(&self) -> impl Iterator<Item = &K> {
+        self.open.iter().map(|(key, _)| key)
+    }
 }
 
 impl<K: Ord, V> From<Context<K, V>> for Module<K, V> {
