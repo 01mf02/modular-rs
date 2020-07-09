@@ -1,5 +1,26 @@
 //! Nested modules.
 //!
+//! This package enables the integration of a (nested) module system into
+//! projects such as compilers, interpreters etc.
+//! Its speciality is the way it resolves module references:
+//! In particular, we can always only reference modules by
+//! their shortest possible path relative to the current position.
+//!
+//! For example, suppose we have the modules a/b/c, a/d/e and f.
+//! Furthermore, let us be in the module a/b/c.
+//! We can then reference
+//! a/b/c, a/b, a and the root module (ancestors of our current module)
+//! only by the empty path.
+//! Furthermore, we can reference
+//! a/d   by the path d,
+//! a/d/e by the path d/e, and
+//! f     by the path f.
+//!
+//! This restriction on module references enables
+//! a very simple implementation as well as
+//! the property that we can always wrap modules around other modules and
+//! be certain that this preserves valid references of the original module.
+//!
 //! In the following example, we create
 //! a module with root data 0 and the following submodules:
 //! * b: 1
@@ -11,7 +32,7 @@
 //! When we are inside the root module, we find only one occurrence of "b", namely "b" (1).
 //!
 //! ~~~
-//! # use modular::{Context, Module};
+//! # use nested_modules::{Context, Module};
 //! let mut ctx = Context::new();
 //! ctx.get_mut().data = 0;
 //! ctx.insert("b", Module::from(1));

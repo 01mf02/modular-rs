@@ -1,3 +1,3 @@
-# modular
+# nested-modules
 
-This Rust library provides building blocks for module systems.
+This Rust library provides building blocks for nested module systems.
