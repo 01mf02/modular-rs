@@ -43,21 +43,21 @@
 //! // we are now in module "a"
 //! assert_eq!(ctx.get().data, 2);
 //! // searching for a module "b" yields two results
-//! let result: Vec<_> = ctx.find(&["b"]).map(|m| m.data).collect();
+//! let result: Vec<_> = ctx.find(["b"].iter()).map(|m| m.data).collect();
 //! assert_eq!(result, vec![3, 1]);
 //! // searching for "a" yields no result, because we are inside it
-//! let result: Vec<_> = ctx.find(&["a"]).map(|m| m.data).collect();
+//! let result: Vec<_> = ctx.find(["a"].iter()).map(|m| m.data).collect();
 //! assert_eq!(result, vec![]);
 //! assert!(ctx.close());
 //!
 //! // we are now in the root module
 //! assert_eq!(ctx.get().data, 0);
 //! // searching for either module "b", "a", or "a"/"b" yields only one result now
-//! let result: Vec<_> = ctx.find(&["b"]).map(|m| m.data).collect();
+//! let result: Vec<_> = ctx.find(["b"].iter()).map(|m| m.data).collect();
 //! assert_eq!(result, vec![1]);
-//! let result: Vec<_> = ctx.find(&["a"]).map(|m| m.data).collect();
+//! let result: Vec<_> = ctx.find(["a"].iter()).map(|m| m.data).collect();
 //! assert_eq!(result, vec![2]);
-//! let result: Vec<_> = ctx.find(&["a", "b"]).map(|m| m.data).collect();
+//! let result: Vec<_> = ctx.find(["a", "b"].iter()).map(|m| m.data).collect();
 //! assert_eq!(result, vec![3]);
 //! assert!(!ctx.close());
 //! ~~~
@@ -65,6 +65,7 @@
 #![no_std]
 extern crate alloc;
 
+use alloc::borrow::Borrow;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
@@ -94,8 +95,13 @@ impl<K: Ord, V: Default> Default for Module<K, V> {
 
 impl<K: Ord, V> Module<K, V> {
     /// Return a reference to a submodule at the given path.
-    pub fn get(mut self: &Self, path: &[K]) -> Option<&Self> {
-        for p in path.iter() {
+    pub fn get<'q, Q: 'q, I>(mut self: &Self, path: I) -> Option<&Self>
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+        I: Iterator<Item = &'q Q>,
+    {
+        for p in path {
             self = self.modules.get(p)?;
         }
         Some(self)
@@ -138,8 +144,7 @@ impl<K: Ord, V> Context<K, V> {
     /// Open a module inside the previously open module.
     ///
     /// Use the provided module if the module with the given name does not exist.
-    pub fn open_or(&mut self, name: K, module: Module<K, V>)
-    {
+    pub fn open_or(&mut self, name: K, module: Module<K, V>) {
         let module = self.remove(&name).unwrap_or(module);
         self.open.push((name, module))
     }
@@ -147,8 +152,7 @@ impl<K: Ord, V> Context<K, V> {
     /// Open a module inside the previously open module.
     ///
     /// Use the provided closure if the module with the given name does not exist.
-    pub fn open_or_else(&mut self, name: K, f: impl FnOnce() -> Module<K, V>)
-    {
+    pub fn open_or_else(&mut self, name: K, f: impl FnOnce() -> Module<K, V>) {
         let module = self.remove(&name).unwrap_or_else(f);
         self.open.push((name, module))
     }
@@ -175,8 +179,16 @@ impl<K: Ord, V> Context<K, V> {
     }
 
     /// Find modules matching the given path from the currently open module.
-    pub fn find<'a>(&'a self, path: &'a [K]) -> impl Iterator<Item = &'a Module<K, V>> {
-        let init = self.open.iter().rev().filter_map(move |o| o.1.get(path));
+    pub fn find<'a, 'q, Q: 'q, I>(&'a self, path: I) -> impl Iterator<Item = &'a Module<K, V>>
+    where
+        K: Borrow<Q>,
+        Q: Ord + ?Sized,
+        I: Iterator<Item = &'q Q> + Clone,
+    {
+        let patc = path.clone();
+        let open = self.open.iter().rev();
+        let init = open.filter_map(move |o| o.1.get(patc.clone()));
+
         // this could be written shorter with `core::iter::once_with`,
         // but it would require a newer Rust version
         let mut last = Some(move || self.root.get(path));
